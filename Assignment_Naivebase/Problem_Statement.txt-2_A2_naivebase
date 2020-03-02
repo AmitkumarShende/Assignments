@@ -1,0 +1,2192 @@
+Build a naive Bayes model on the data set for classifying the ham and spam
+****************************************************Answer**************************
+#Code
+#Import the raw_sms dataset 
+library(readr)
+sms_raw <- read_csv("D:/Data_science/Assignments/Assignments_naivebase/sms_raw_NB.csv")
+View(sms_raw)
+
+sms_raw$type <- factor(sms_raw$type)
+
+# examine the type variable more carefully
+str(sms_raw$type)
+table(sms_raw$type)
+
+# build a corpus using the text mining (tm) package
+install.packages("tm")
+library(tm)
+sms_corpus <- Corpus(VectorSource(sms_raw$text))
+
+sms_corpus <- tm_map(sms_corpus, function(x) iconv(enc2utf8(x), sub='byte'))
+
+# clean up the corpus using tm_map()
+corpus_clean <- tm_map(sms_corpus, tolower)
+corpus_clean <- tm_map(corpus_clean, removeNumbers)
+corpus_clean <- tm_map(corpus_clean, removeWords, stopwords())
+corpus_clean <- tm_map(corpus_clean, removePunctuation)
+corpus_clean <- tm_map(corpus_clean, stripWhitespace)
+str(corpus_clean)
+inspect(corpus_clean[1:3])
+
+# create a document-term sparse matrix
+sms_dtm <- DocumentTermMatrix(corpus_clean)
+
+#sms_dtm
+
+# creating training and test datasets
+sms_raw_train <- sms_raw[1:4169, ]
+sms_raw_test  <- sms_raw[4170:5559, ]
+
+sms_dtm_train <- sms_dtm[1:4169, ]
+sms_dtm_test  <- sms_dtm[4170:5559, ]
+
+sms_corpus_train <- corpus_clean[1:4169]
+sms_corpus_test  <- corpus_clean[4170:5559]
+
+# check that the proportion of spam is similar
+prop.table(table(sms_raw_train$type))
+prop.table(table(sms_raw_test$type))
+
+
+# indicator features for frequent words
+# dictionary of words which are used more than 5 times
+sms_dict <- findFreqTerms(sms_dtm_train, 5)
+
+sms_train <- DocumentTermMatrix(sms_corpus_train, list(dictionary = sms_dict))
+sms_test  <- DocumentTermMatrix(sms_corpus_test, list(dictionary = sms_dict))
+
+# convert counts to a factor
+# custom function: if a word is used more than 0 times then mention 1 else mention 0
+convert_counts <- function(x) {
+  x <- ifelse(x > 0, 1, 0)
+  x <- factor(x, levels = c(0, 1), labels = c("No", "Yes"))
+}
+
+# apply() convert_counts() to columns of train/test data
+# Margin = 2 is for columns
+# Margin = 1 is for rows
+sms_train <- apply(sms_train, MARGIN = 2, convert_counts)
+sms_test  <- apply(sms_test, MARGIN = 2, convert_counts)
+
+##  Training a model on the data ----
+install.packages("e1071")
+library(e1071)
+sms_classifier <- naiveBayes(sms_train, sms_raw_train$type)
+sms_classifier
+
+##  Evaluating model performance ----
+sms_test_pred <- predict(sms_classifier, sms_test)
+
+table(sms_test_pred)
+prop.table(table(sms_test_pred))
+
+library(gmodels)
+CrossTable(sms_test_pred, sms_raw_test$type,
+           prop.chisq = FALSE, prop.t = FALSE, prop.r = FALSE,
+           dnn = c('predicted', 'actual'))
+
+###########################################
+**********************************************************************************
+*********************************************Output********************************
+> #Import the raw_sms dataset 
+> library(readr)
+> sms_raw <- read_csv("D:/Data_science/Assignments/Assignments_naivebase/sms_raw_NB.csv")
+Parsed with column specification:
+cols(
+  type = col_character(),
+  text = col_character()
+)
+> View(sms_raw)
+> sms_raw$type <- factor(sms_raw$type)
+> # examine the type variable more carefully
+> str(sms_raw$type)
+ Factor w/ 2 levels "ham","spam": 1 1 1 2 2 1 1 1 2 1 ...
+> table(sms_raw$type)
+
+ ham spam 
+4812  747 
+> # build a corpus using the text mining (tm) package
+> install.packages("tm")
+Error in install.packages : Updating loaded packages
+> install.packages("tm")
+WARNING: Rtools is required to build R packages but is not currently installed. Please download and install the appropriate version of Rtools before proceeding:
+
+https://cran.rstudio.com/bin/windows/Rtools/
+Installing package into ‘C:/Users/Dell/Documents/R/win-library/3.6’
+(as ‘lib’ is unspecified)
+Warning in install.packages :
+  package ‘tm’ is in use and will not be installed
+> library(tm)
+>sms_corpus <- Corpus(VectorSource(sms_raw$text))
+> sms_corpus <- tm_map(sms_corpus, function(x) iconv(enc2utf8(x), sub='byte'))
+Warning message:
+In tm_map.SimpleCorpus(sms_corpus, function(x) iconv(enc2utf8(x),  :
+  transformation drops documents
+> # clean up the corpus using tm_map()
+> corpus_clean <- tm_map(sms_corpus, tolower)
+Warning message:
+In tm_map.SimpleCorpus(sms_corpus, tolower) :
+  transformation drops documents
+> corpus_clean <- tm_map(corpus_clean, removeNumbers)
+Warning message:
+In tm_map.SimpleCorpus(corpus_clean, removeNumbers) :
+  transformation drops documents
+> corpus_clean <- tm_map(corpus_clean, removeWords, stopwords())
+Warning message:
+In tm_map.SimpleCorpus(corpus_clean, removeWords, stopwords()) :
+  transformation drops documents
+> corpus_clean <- tm_map(corpus_clean, removePunctuation)
+Warning message:
+In tm_map.SimpleCorpus(corpus_clean, removePunctuation) :
+  transformation drops documents
+> corpus_clean <- tm_map(corpus_clean, stripWhitespace)
+Warning message:
+In tm_map.SimpleCorpus(corpus_clean, stripWhitespace) :
+  transformation drops documents
+.
+.
+.
+.
+$ 18  :List of 2
+  ..$ content: chr " dint tell anything angry told abi"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "18"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 19  :List of 2
+  ..$ content: chr " u u wan come come lor din c stripes skirt"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "19"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 20  :List of 2
+  ..$ content: chr "u can win å£ music gift vouchers every week starting now txt word draw tscs wwwldewcom skillgamewinaweek ageppe"| __truncated__
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "20"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 21  :List of 2
+  ..$ content: chr "mro coming gym machan goodnight"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "21"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 22  :List of 2
+  ..$ content: chr "arr birthday today wish get oscar"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "22"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 23  :List of 2
+  ..$ content: chr "reading gud habit nan bari hudgi yorge pataistha ertini kano"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "23"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 24  :List of 2
+  ..$ content: chr " sent scores sophas secondary application schools think thinking applying research cost also contact joke ogunr"| __truncated__
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "24"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 25  :List of 2
+  ..$ content: chr " read love answered "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "25"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 26  :List of 2
+  ..$ content: chr " bank say money"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "26"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 27  :List of 2
+  ..$ content: chr "well desperate just call armand "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "27"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 28  :List of 2
+  ..$ content: chr "fuuuuck need stop sleepin sup"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "28"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 29  :List of 2
+  ..$ content: chr " weather "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "29"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 30  :List of 2
+  ..$ content: chr "ok thanx"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "30"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 31  :List of 2
+  ..$ content: chr "okok okwhats ur todays plan"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "31"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 32  :List of 2
+  ..$ content: chr "appleday doctor tulsi leafday cancer lemonday fat cup milkday bone problms litres watrday diseases snd ths u care"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "32"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 33  :List of 2
+  ..$ content: chr "sorry call later"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "33"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 34  :List of 2
+  ..$ content: chr "will exhausted train morning much wine pie sleep well "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "34"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 35  :List of 2
+  ..$ content: chr "u won nokia plus free digital camera u get u win free auction take part send nokia now poboxtcrw "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "35"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 36  :List of 2
+  ..$ content: chr "ron say fri leh n said ding tai feng cant make reservations said wait lor"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "36"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 37  :List of 2
+  ..$ content: chr "call carlos phones vibrate acting might hear texts"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "37"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 38  :List of 2
+  ..$ content: chr "oh k got job whats "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "38"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 39  :List of 2
+  ..$ content: chr "spjanuary male sale hot gay chat now cheaper call national rate pmin cheap pmin peak stop texts call pmin"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "39"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 40  :List of 2
+  ..$ content: chr "yeah think can use gt atm now register sure anyway can help let know sure ready"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:52"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "40"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 41  :List of 2
+  ..$ content: chr "nationwide auto centre something like newport road liked "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "41"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 42  :List of 2
+  ..$ content: chr " call meet "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "42"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 43  :List of 2
+  ..$ content: chr "yeah sure leave min"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "43"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 44  :List of 2
+  ..$ content: chr "urgent mobile number awarded å£ prize guaranteed call land line claim valid hrs ppm"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "44"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 45  :List of 2
+  ..$ content: chr "mah b pick tomorrow"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "45"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 46  :List of 2
+  ..$ content: chr " dun believe wat"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "46"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 47  :List of 2
+  ..$ content: chr " sent u part"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "47"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 48  :List of 2
+  ..$ content: chr "hey whats plan sat"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "48"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 49  :List of 2
+  ..$ content: chr "can just come sec somebody want see"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "49"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 50  :List of 2
+  ..$ content: chr "yup izzit still raining heavily cos e mrt c outside"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "50"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 51  :List of 2
+  ..$ content: chr " think going finns now come"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "51"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 52  :List of 2
+  ..$ content: chr " prasanth ettans mother passed away last night just pray family"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "52"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 53  :List of 2
+  ..$ content: chr "enjoy showers possessiveness poured u ur loved ones bcoz world lies golden gift loved truly"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "53"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 54  :List of 2
+  ..$ content: chr " really skateboarding now despite fact gets thrown winds bandages arms every five minutes"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "54"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 55  :List of 2
+  ..$ content: chr " please give us connection today decimal refund bill"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "55"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 56  :List of 2
+  ..$ content: chr "congratulations ur awarded cd vouchers gift guaranteed free entry wkly draw txt music tncs wwwldewcomwinppmxage"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "56"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 57  :List of 2
+  ..$ content: chr "mum going robinson already"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "57"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 58  :List of 2
+  ..$ content: chr "got meh "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "58"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 59  :List of 2
+  ..$ content: chr " fine thanks"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "59"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 60  :List of 2
+  ..$ content: chr "awesome deal gate charles told last night uh yeah"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "60"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 61  :List of 2
+  ..$ content: chr " thought get watch just cos thats kind thing u getanth loves much"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "61"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 62  :List of 2
+  ..$ content: chr " safe trip nigeria wish happiness soon company share moments "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "62"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 63  :List of 2
+  ..$ content: chr "hey u fancy meetin cha ‰ûò hav lil beverage txt ring can meet lr quite tired got vpist love pete x x x"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "63"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 64  :List of 2
+  ..$ content: chr " mean post wrote like many times ritten stuff let sit feeling time angry left hit send stop checked phone got c"| __truncated__
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "64"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 65  :List of 2
+  ..$ content: chr " want mapquest something look usf dogwood drive tiny street parking lot "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "65"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 66  :List of 2
+  ..$ content: chr "ha ha nan yalrigu heltiniiyo kothi chikku u shared many things wit far told body even uttered word abt u ur tru"| __truncated__
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "66"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 67  :List of 2
+  ..$ content: chr "becoz jan whn al post ofice holiday cn go fr post oficegot duffer"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "67"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 68  :List of 2
+  ..$ content: chr "good think send pix love see top bottom"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "68"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 69  :List of 2
+  ..$ content: chr "beautiful truth gravity read carefully heart feels light someone feels heavy someone leaves good night"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "69"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 70  :List of 2
+  ..$ content: chr "buzz hey love think hope day goes well sleep miss babe long moment together loving smile"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "70"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 71  :List of 2
+  ..$ content: chr "lara said can loan "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "71"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 72  :List of 2
+  ..$ content: chr "dunno leh cant remember mayb lor wat time r meeting tmr"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "72"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 73  :List of 2
+  ..$ content: chr " wats ur opinion abt abt character"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "73"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 74  :List of 2
+  ..$ content: chr "oh oh wasted den muz chiong sat n sun liao"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "74"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 75  :List of 2
+  ..$ content: chr " work right now "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "75"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 76  :List of 2
+  ..$ content: chr "bring home wendy d"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "76"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 77  :List of 2
+  ..$ content: chr "ok going sleep hope can meet "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "77"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 78  :List of 2
+  ..$ content: chr "allo braved buses taken trains triumphed mean ‰ââèïre b‰ââèïham jolly good rest week"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "78"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 79  :List of 2
+  ..$ content: chr "hmmm many players selected"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "79"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 80  :List of 2
+  ..$ content: chr " flippin yet"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "80"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 81  :List of 2
+  ..$ content: chr " board working fine issue overheating also reslove still software inst pending will come around o clock"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "81"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 82  :List of 2
+  ..$ content: chr "urgent mobile number awarded å£ prize guaranteed call land line claim valid hrs ppm"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "82"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 83  :List of 2
+  ..$ content: chr "s girls many local u r virgins r ready fil ur every sexual need can u fil text cute å£p m"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "83"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 84  :List of 2
+  ..$ content: chr "nope since ayo travelled forgotten guy"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "84"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 85  :List of 2
+  ..$ content: chr "hey tmr maybe can meet yck"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "85"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 86  :List of 2
+  ..$ content: chr "ok coming home now"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "86"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 87  :List of 2
+  ..$ content: chr "u called dad oredi"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "87"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 88  :List of 2
+  ..$ content: chr "alright head minutes text meet "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:53"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "88"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 89  :List of 2
+  ..$ content: chr "deep sigh miss really surprised gone net cafe yet get miss "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:54"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "89"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 90  :List of 2
+  ..$ content: chr "will office around pm now going hospital"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:54"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "90"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 91  :List of 2
+  ..$ content: chr "asked mobile chatlines inclu free mins india cust servs sed yes ler got mega bill dont care bailiff due days o å£ want å£"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:54"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "91"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 92  :List of 2
+  ..$ content: chr "yup bathe liao"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:54"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "92"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 93  :List of 2
+  ..$ content: chr " getting threats sales executive shifad raised complaint official message"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:54"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "93"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 94  :List of 2
+  ..$ content: chr "s will increase chance winning"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:54"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "94"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 95  :List of 2
+  ..$ content: chr " queen going royal wedding"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:54"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "95"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 96  :List of 2
+  ..$ content: chr "dear reached railway happen "
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:54"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "96"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 97  :List of 2
+  ..$ content: chr "probably gonna swing wee bit"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:54"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "97"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 98  :List of 2
+  ..$ content: chr "k k pa lunch aha"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:54"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "98"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+ $ 99  :List of 2
+  ..$ content: chr " waited yesterday"
+  ..$ meta   :List of 7
+  .. ..$ author       : chr(0) 
+  .. ..$ datetimestamp: POSIXlt[1:1], format: "2020-02-06 11:53:54"
+  .. ..$ description  : chr(0) 
+  .. ..$ heading      : chr(0) 
+  .. ..$ id           : chr "99"
+  .. ..$ language     : chr "en"
+  .. ..$ origin       : chr(0) 
+  .. ..- attr(*, "class")= chr "TextDocumentMeta"
+  ..- attr(*, "class")= chr [1:2] "PlainTextDocument" "TextDocument"
+  [list output truncated]
+ - attr(*, "class")= chr [1:2] "SimpleCorpus" "Corpus"
+> inspect(corpus_clean[1:3])
+<<SimpleCorpus>>
+Metadata:  corpus specific: 1, document level (indexed): 0
+Content:  documents: 3
+
+[1] hope good week just checking  kgive back thanks            
+[3]  also cbe pay                
+> # create a document-term sparse matrix
+> sms_dtm <- DocumentTermMatrix(corpus_clean)
+ # create a document-term sparse matrix
+> sms_dtm <- DocumentTermMatrix(corpus_clean)
+> # creating training and test datasets
+> sms_raw_train <- sms_raw[1:4169, ]
+> sms_raw_test  <- sms_raw[4170:5559, ]
+> sms_dtm_train <- sms_dtm[1:4169, ]
+> sms_dtm_test  <- sms_dtm[4170:5559, ]
+> sms_corpus_train <- corpus_clean[1:4169]
+> sms_corpus_test  <- corpus_clean[4170:5559]
+> # check that the proportion of spam is similar
+> prop.table(table(sms_raw_train$type))
+
+      ham      spam 
+0.8647158 0.1352842 
+> prop.table(table(sms_raw_test$type))
+
+      ham      spam 
+0.8683453 0.1316547 
+> # indicator features for frequent words
+> # dictionary of words which are used more than 5 times
+> sms_dict <- findFreqTerms(sms_dtm_train, 5)
+> sms_train <- DocumentTermMatrix(sms_corpus_train, list(dictionary = sms_dict))
+> sms_test  <- DocumentTermMatrix(sms_corpus_test, list(dictionary = sms_dict))
+> # convert counts to a factor
+> # custom function: if a word is used more than 0 times then mention 1 else mention 0
+> convert_counts <- function(x) {
++   x <- ifelse(x > 0, 1, 0)
++   x <- factor(x, levels = c(0, 1), labels = c("No", "Yes"))
++ }
+> # apply() convert_counts() to columns of train/test data
+> # Margin = 2 is for columns
+> # Margin = 1 is for rows
+> sms_train <- apply(sms_train, MARGIN = 2, convert_counts)
+> sms_test  <- apply(sms_test, MARGIN = 2, convert_counts)
+> install.packages("e1071")
+WARNING: Rtools is required to build R packages but is not currently installed. Please download and install the appropriate version of Rtools before proceeding:
+
+https://cran.rstudio.com/bin/windows/Rtools/
+Installing package into ‘C:/Users/Dell/Documents/R/win-library/3.6’
+(as ‘lib’ is unspecified)
+Warning in install.packages :
+  package ‘e1071’ is in use and will not be installed
+> library(e1071)
+> sms_classifier <- naiveBayes(sms_train, sms_raw_train$type)
+>sms_classifier
+>.
+.
+.
+.
+.
+sms_raw_train$type          No         Yes
+              ham  1.000000000 0.000000000
+              spam 0.991134752 0.008865248
+
+                  wwq
+sms_raw_train$type          No         Yes
+              ham  1.000000000 0.000000000
+              spam 0.991134752 0.008865248
+
+                  wwwgetzedcouk
+sms_raw_train$type        No       Yes
+              ham  1.0000000 0.0000000
+              spam 0.9893617 0.0106383
+
+                  frnd
+sms_raw_train$type          No         Yes
+              ham  0.997780860 0.002219140
+              spam 0.992907801 0.007092199
+
+                  tour
+sms_raw_train$type           No          Yes
+              ham  0.9991678225 0.0008321775
+              spam 0.9946808511 0.0053191489
+
+                  choose
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 0.984042553 0.015957447
+
+                  rather
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  timing
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  write
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  news
+sms_raw_train$type          No         Yes
+              ham  0.998890430 0.001109570
+              spam 0.991134752 0.008865248
+
+                  however
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 0.998226950 0.001773050
+
+                  luck
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 0.994680851 0.005319149
+
+                  feb
+sms_raw_train$type         No        Yes
+              ham  0.99889043 0.00110957
+              spam 0.99822695 0.00177305
+
+                  sounds
+sms_raw_train$type         No        Yes
+              ham  0.99667129 0.00332871
+              spam 1.00000000 0.00000000
+
+                  waste
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  open
+sms_raw_train$type         No        Yes
+              ham  0.99667129 0.00332871
+              spam 0.99822695 0.00177305
+
+                  goodmorning
+sms_raw_train$type         No        Yes
+              ham  0.99778086 0.00221914
+              spam 1.00000000 0.00000000
+
+                  uncle
+sms_raw_train$type          No         Yes
+              ham  0.997503467 0.002496533
+              spam 1.000000000 0.000000000
+
+                  disturb
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  pin
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 0.998226950 0.001773050
+
+                  lookin
+sms_raw_train$type         No        Yes
+              ham  0.99889043 0.00110957
+              spam 0.99822695 0.00177305
+
+                  married
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 0.996453901 0.003546099
+
+                  babes
+sms_raw_train$type           No          Yes
+              ham  0.9991678225 0.0008321775
+              spam 0.9964539007 0.0035460993
+
+                  months
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 0.994680851 0.005319149
+
+                  press
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 0.994680851 0.005319149
+
+                  john
+sms_raw_train$type         No        Yes
+              ham  0.99889043 0.00110957
+              spam 1.00000000 0.00000000
+
+                  added
+sms_raw_train$type          No         Yes
+              ham  0.998890430 0.001109570
+              spam 0.996453901 0.003546099
+
+                  fullonsmscom
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  visit
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 0.989361702 0.010638298
+
+                  welcome
+sms_raw_train$type          No         Yes
+              ham  0.998890430 0.001109570
+              spam 0.992907801 0.007092199
+
+                  round
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 0.998226950 0.001773050
+
+                  putting
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  announcement
+sms_raw_train$type          No         Yes
+              ham  1.000000000 0.000000000
+              spam 0.991134752 0.008865248
+
+                  spend
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  twice
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  tariffs
+sms_raw_train$type        No       Yes
+              ham  1.0000000 0.0000000
+              spam 0.9893617 0.0106383
+
+                  anymore
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  exciting
+sms_raw_train$type          No         Yes
+              ham  0.999445215 0.000554785
+              spam 0.994680851 0.005319149
+
+                  past
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  keeping
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  starts
+sms_raw_train$type           No          Yes
+              ham  0.9991678225 0.0008321775
+              spam 0.9946808511 0.0053191489
+
+                  almost
+sms_raw_train$type          No         Yes
+              ham  0.997503467 0.002496533
+              spam 1.000000000 0.000000000
+
+                  partner
+sms_raw_train$type          No         Yes
+              ham  1.000000000 0.000000000
+              spam 0.991134752 0.008865248
+
+                  single
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 0.998226950 0.001773050
+
+                  cashbalance
+sms_raw_train$type        No       Yes
+              ham  1.0000000 0.0000000
+              spam 0.9893617 0.0106383
+
+                  hgsuitelands
+sms_raw_train$type        No       Yes
+              ham  1.0000000 0.0000000
+              spam 0.9858156 0.0141844
+
+                  maximize
+sms_raw_train$type        No       Yes
+              ham  1.0000000 0.0000000
+              spam 0.9893617 0.0106383
+
+                  rowwjhl
+sms_raw_train$type        No       Yes
+              ham  1.0000000 0.0000000
+              spam 0.9858156 0.0141844
+
+                  role
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  exams
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  jay
+sms_raw_train$type          No         Yes
+              ham  0.996948682 0.003051318
+              spam 1.000000000 0.000000000
+
+                  ten
+sms_raw_train$type          No         Yes
+              ham  0.997226075 0.002773925
+              spam 0.998226950 0.001773050
+
+                  simple
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  operator
+sms_raw_train$type        No       Yes
+              ham  1.0000000 0.0000000
+              spam 0.9822695 0.0177305
+
+                  mate
+sms_raw_train$type          No         Yes
+              ham  0.997226075 0.002773925
+              spam 1.000000000 0.000000000
+
+                  doin
+sms_raw_train$type          No         Yes
+              ham  0.997503467 0.002496533
+              spam 1.000000000 0.000000000
+
+                  thurs
+sms_raw_train$type           No          Yes
+              ham  0.9991678225 0.0008321775
+              spam 0.9964539007 0.0035460993
+
+                  normal
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 0.998226950 0.001773050
+
+                  works
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  sis
+sms_raw_train$type          No         Yes
+              ham  0.996948682 0.003051318
+              spam 1.000000000 0.000000000
+
+                  bus
+sms_raw_train$type          No         Yes
+              ham  0.992787795 0.007212205
+              spam 1.000000000 0.000000000
+
+                  tickets
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 0.994680851 0.005319149
+
+                  battery
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  unless
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  depends
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  anytime
+sms_raw_train$type          No         Yes
+              ham  0.999445215 0.000554785
+              spam 0.982269504 0.017730496
+
+                  studying
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  <U+0089><e2><e2><e8><ef>s
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  marry
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  relation
+sms_raw_train$type         No        Yes
+              ham  0.99889043 0.00110957
+              spam 1.00000000 0.00000000
+
+                  ave
+sms_raw_train$type           No          Yes
+              ham  0.9991678225 0.0008321775
+              spam 0.9946808511 0.0053191489
+
+                  stupid
+sms_raw_train$type          No         Yes
+              ham  0.996948682 0.003051318
+              spam 1.000000000 0.000000000
+
+                  mode
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  smth
+sms_raw_train$type          No         Yes
+              ham  0.996116505 0.003883495
+              spam 1.000000000 0.000000000
+
+                  ahead
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  aft
+sms_raw_train$type         No        Yes
+              ham  0.99556172 0.00443828
+              spam 1.00000000 0.00000000
+
+                  joking
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  bout
+sms_raw_train$type          No         Yes
+              ham  0.997226075 0.002773925
+              spam 0.998226950 0.001773050
+
+                  nah
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  tear
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  wks
+sms_raw_train$type           No          Yes
+              ham  0.9991678225 0.0008321775
+              spam 0.9982269504 0.0017730496
+
+                  paying
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 0.998226950 0.001773050
+
+                  possible
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  fone
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 0.994680851 0.005319149
+
+                  mrw
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  bid
+sms_raw_train$type          No         Yes
+              ham  1.000000000 0.000000000
+              spam 0.994680851 0.005319149
+
+                  loyalty
+sms_raw_train$type        No       Yes
+              ham  1.0000000 0.0000000
+              spam 0.9893617 0.0106383
+
+                  hungry
+sms_raw_train$type          No         Yes
+              ham  0.997503467 0.002496533
+              spam 1.000000000 0.000000000
+
+                  training
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  funny
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  earth
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  yar
+sms_raw_train$type         No        Yes
+              ham  0.99778086 0.00221914
+              spam 1.00000000 0.00000000
+
+                  door
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  receipt
+sms_raw_train$type          No         Yes
+              ham  0.999445215 0.000554785
+              spam 0.994680851 0.005319149
+
+                  registered
+sms_raw_train$type           No          Yes
+              ham  0.9991678225 0.0008321775
+              spam 0.9946808511 0.0053191489
+
+                  silent
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  understand
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  vodafone
+sms_raw_train$type        No       Yes
+              ham  1.0000000 0.0000000
+              spam 0.9893617 0.0106383
+
+                  sick
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  sucks
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  planned
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  serious
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  sound
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  decide
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  happens
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  rates
+sms_raw_train$type          No         Yes
+              ham  1.000000000 0.000000000
+              spam 0.991134752 0.008865248
+
+                  entitled
+sms_raw_train$type        No       Yes
+              ham  1.0000000 0.0000000
+              spam 0.9858156 0.0141844
+
+                  save
+sms_raw_train$type          No         Yes
+              ham  0.998890430 0.001109570
+              spam 0.996453901 0.003546099
+
+                  access
+sms_raw_train$type           No          Yes
+              ham  0.9997226075 0.0002773925
+              spam 0.9946808511 0.0053191489
+
+                  lost
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 0.998226950 0.001773050
+
+                  buying
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  teach
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  excellent
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  hate
+sms_raw_train$type         No        Yes
+              ham  0.99889043 0.00110957
+              spam 1.00000000 0.00000000
+
+                  lazy
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  direct
+sms_raw_train$type           No          Yes
+              ham  0.9997226075 0.0002773925
+              spam 0.9858156028 0.0141843972
+
+                  via
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 0.996453901 0.003546099
+
+                  coffee
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  yep
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  sch
+sms_raw_train$type          No         Yes
+              ham  0.996393897 0.003606103
+              spam 1.000000000 0.000000000
+
+                  <U+0089><e2><e2><e8><ef>m
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  semester
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  otherwise
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  yoga
+sms_raw_train$type         No        Yes
+              ham  0.99889043 0.00110957
+              spam 1.00000000 0.00000000
+
+                  lovable
+sms_raw_train$type         No        Yes
+              ham  0.99778086 0.00221914
+              spam 1.00000000 0.00000000
+
+                  juz
+sms_raw_train$type          No         Yes
+              ham  0.995839112 0.004160888
+              spam 1.000000000 0.000000000
+
+                  dnt
+sms_raw_train$type         No        Yes
+              ham  0.99778086 0.00221914
+              spam 1.00000000 0.00000000
+
+                  seriously
+sms_raw_train$type         No        Yes
+              ham  0.99778086 0.00221914
+              spam 1.00000000 0.00000000
+
+                  copy
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  aiyo
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  film
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 0.998226950 0.001773050
+
+                  hurts
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  thru
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  user
+sms_raw_train$type           No          Yes
+              ham  0.9997226075 0.0002773925
+              spam 0.9893617021 0.0106382979
+
+                  arcade
+sms_raw_train$type          No         Yes
+              ham  1.000000000 0.000000000
+              spam 0.994680851 0.005319149
+
+                  crave
+sms_raw_train$type         No        Yes
+              ham  0.99778086 0.00221914
+              spam 1.00000000 0.00000000
+
+                  eating
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  dropped
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  log
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 0.989361702 0.010638298
+
+                  argument
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  kick
+sms_raw_train$type         No        Yes
+              ham  0.99889043 0.00110957
+              spam 0.99822695 0.00177305
+
+                  wins
+sms_raw_train$type         No        Yes
+              ham  0.99889043 0.00110957
+              spam 0.99822695 0.00177305
+
+                  hop
+sms_raw_train$type           No          Yes
+              ham  0.9991678225 0.0008321775
+              spam 1.0000000000 0.0000000000
+
+                  die
+sms_raw_train$type          No         Yes
+              ham  0.997226075 0.002773925
+              spam 1.000000000 0.000000000
+
+                  monday
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  tot
+sms_raw_train$type          No         Yes
+              ham  0.996948682 0.003051318
+              spam 1.000000000 0.000000000
+
+                  nyt
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 0.998226950 0.001773050
+
+                  link
+sms_raw_train$type          No         Yes
+              ham  0.999445215 0.000554785
+              spam 0.992907801 0.007092199
+
+                  future
+sms_raw_train$type           No          Yes
+              ham  0.9991678225 0.0008321775
+              spam 0.9946808511 0.0053191489
+
+                  sometimes
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  match
+sms_raw_train$type          No         Yes
+              ham  0.998890430 0.001109570
+              spam 0.992907801 0.007092199
+
+                  girlfrnd
+sms_raw_train$type           No          Yes
+              ham  0.9991678225 0.0008321775
+              spam 1.0000000000 0.0000000000
+
+                  lift
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  meaning
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  police
+sms_raw_train$type          No         Yes
+              ham  0.999445215 0.000554785
+              spam 0.998226950 0.001773050
+
+                  project
+sms_raw_train$type          No         Yes
+              ham  0.997226075 0.002773925
+              spam 1.000000000 0.000000000
+
+                  different
+sms_raw_train$type         No        Yes
+              ham  0.99778086 0.00221914
+              spam 1.00000000 0.00000000
+
+                  member
+sms_raw_train$type          No         Yes
+              ham  0.999445215 0.000554785
+              spam 0.992907801 0.007092199
+
+                  callertune
+sms_raw_train$type           No          Yes
+              ham  0.9991678225 0.0008321775
+              spam 1.0000000000 0.0000000000
+
+                  eyes
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  picking
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  fantastic
+sms_raw_train$type          No         Yes
+              ham  0.999445215 0.000554785
+              spam 0.989361702 0.010638298
+
+                  space
+sms_raw_train$type          No         Yes
+              ham  0.998890430 0.001109570
+              spam 0.996453901 0.003546099
+
+                  rent
+sms_raw_train$type         No        Yes
+              ham  0.99778086 0.00221914
+              spam 1.00000000 0.00000000
+
+                  httpwwwurawinnercom
+sms_raw_train$type          No         Yes
+              ham  1.000000000 0.000000000
+              spam 0.991134752 0.008865248
+
+                  onto
+sms_raw_train$type        No       Yes
+              ham  1.0000000 0.0000000
+              spam 0.9893617 0.0106383
+
+                  ugh
+sms_raw_train$type         No        Yes
+              ham  0.99778086 0.00221914
+              spam 1.00000000 0.00000000
+
+                  forever
+sms_raw_train$type         No        Yes
+              ham  0.99778086 0.00221914
+              spam 1.00000000 0.00000000
+
+                  <e5><U+00A3>wk
+sms_raw_train$type          No         Yes
+              ham  1.000000000 0.000000000
+              spam 0.991134752 0.008865248
+
+                  miracle
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  gave
+sms_raw_train$type         No        Yes
+              ham  0.99778086 0.00221914
+              spam 1.00000000 0.00000000
+
+                  rply
+sms_raw_train$type           No          Yes
+              ham  0.9991678225 0.0008321775
+              spam 0.9911347518 0.0088652482
+
+                  king
+sms_raw_train$type           No          Yes
+              ham  0.9991678225 0.0008321775
+              spam 0.9964539007 0.0035460993
+
+                  pleasure
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  uve
+sms_raw_train$type           No          Yes
+              ham  0.9997226075 0.0002773925
+              spam 0.9929078014 0.0070921986
+
+                  records
+sms_raw_train$type          No         Yes
+              ham  1.000000000 0.000000000
+              spam 0.991134752 0.008865248
+
+                  study
+sms_raw_train$type          No         Yes
+              ham  0.998335645 0.001664355
+              spam 1.000000000 0.000000000
+
+                  frens
+sms_raw_train$type          No         Yes
+              ham  0.998058252 0.001941748
+              spam 1.000000000 0.000000000
+
+                  photo
+sms_raw_train$type          No         Yes
+              ham  0.998890430 0.001109570
+              spam 0.996453901 0.003546099
+
+                  bluetooth
+sms_raw_train$type          No         Yes
+              ham  1.000000000 0.000000000
+              spam 0.991134752 0.008865248
+
+                  stand
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  persons
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  handset
+sms_raw_train$type          No         Yes
+              ham  1.000000000 0.000000000
+              spam 0.991134752 0.008865248
+
+                  cell
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  catch
+sms_raw_train$type         No        Yes
+              ham  0.99778086 0.00221914
+              spam 1.00000000 0.00000000
+
+                  figure
+sms_raw_train$type         No        Yes
+              ham  0.99778086 0.00221914
+              spam 1.00000000 0.00000000
+
+                  ice
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  tea
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  tick
+sms_raw_train$type          No         Yes
+              ham  0.999445215 0.000554785
+              spam 1.000000000 0.000000000
+
+                  accept
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  naughty
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+                  worries
+sms_raw_train$type          No         Yes
+              ham  0.998613037 0.001386963
+              spam 1.000000000 0.000000000
+
+> ##  Evaluating model performance ----
+> sms_test_pred <- predict(sms_classifier, sms_test)
+> table(sms_test_pred)
+sms_test_pred
+ ham spam 
+1235  155 
+> prop.table(table(sms_test_pred))
+sms_test_pred
+      ham      spam 
+0.8884892 0.1115108 
+> library(gmodels)
+> CrossTable(sms_test_pred, sms_raw_test$type,
++            prop.chisq = FALSE, prop.t = FALSE, prop.r = FALSE,
++            dnn = c('predicted', 'actual'))
+
+ 
+   Cell Contents
+|-------------------------|
+|                       N |
+|           N / Col Total |
+|-------------------------|
+
+ 
+Total Observations in Table:  1390 
+
+ 
+             | actual 
+   predicted |       ham |      spam | Row Total | 
+-------------|-----------|-----------|-----------|
+         ham |      1203 |        32 |      1235 | 
+             |     0.997 |     0.175 |           | 
+-------------|-----------|-----------|-----------|
+        spam |         4 |       151 |       155 | 
+             |     0.003 |     0.825 |           | 
+-------------|-----------|-----------|-----------|
+Column Total |      1207 |       183 |      1390 | 
+             |     0.868 |     0.132 |           | 
+-------------|-----------|-----------|-----------|
+
